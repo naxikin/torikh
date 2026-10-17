@@ -1,0 +1,6 @@
+SocksPort 9050 IsolateSOCKSAuth
+ControlPort 9051
+CookieAuthentication 1
+DataDirectory /home/xikin/.tor-data
+Log notice file /home/xikin/.tor-data/tor.log
+ClientOnly 1

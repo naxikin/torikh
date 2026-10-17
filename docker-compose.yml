@@ -1,0 +1,25 @@
+services:
+  xikin:
+    build: .
+    image: xikin:local
+    env_file:
+      - .env
+    environment:
+      TOR_DATA_DIR: /home/xikin/.tor-data
+      XIKIN_DB_PATH: /home/xikin/.xikin/xikin.db
+      XIKIN_EVIDENCE_LOG: /home/xikin/.xikin/evidence.jsonl
+    volumes:
+      - xikin-data:/home/xikin/.xikin
+      - tor-data:/home/xikin/.tor-data
+      - ./reports:/reports
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  xikin-data:
+  tor-data:

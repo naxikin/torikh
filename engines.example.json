@@ -1,0 +1,11 @@
+{
+  "_comment": "Copy to engines.json to override or add engines. Same-name entries replace the built-in ones; new names are appended.",
+  "engines": [
+    {
+      "name": "Haystak",
+      "kind": "onion",
+      "url": "http://haystak5njsmn2hqkewecpaxetahtwhsbsa64jom2k22z5afxhnpxfid.onion/?q={query}",
+      "note": "user-added — verify the current address via dark.fail before trusting it"
+    }
+  ]
+}
