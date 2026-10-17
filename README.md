@@ -25,20 +25,19 @@ python3 renew.py                                       # new circuit / identity
 ## Contents
 
 1. [What it does](#what-it-does)
-2. [Beyond the reference implementation](#beyond-the-reference-implementation)
-3. [Requirements](#requirements)
-4. [Install](#install)
-5. [Docker](#docker)
-6. [Configuration](#configuration)
-7. [The commands](#the-commands)
-8. [Investigation flows](#investigation-flows)
-9. [Analysis modes](#analysis-modes)
-10. [Search engines](#search-engines)
-11. [Architecture](#architecture)
-12. [Safety](#safety)
-13. [Troubleshooting](#troubleshooting)
-14. [Using it as an agent skill](#using-it-as-an-agent-skill)
-15. [Credits](#credits)
+2. [Requirements](#requirements)
+3. [Install](#install)
+4. [Docker](#docker)
+5. [Configuration](#configuration)
+6. [The commands](#the-commands)
+7. [Investigation flows](#investigation-flows)
+8. [Analysis modes](#analysis-modes)
+9. [Search engines](#search-engines)
+10. [Architecture](#architecture)
+11. [Safety](#safety)
+12. [Troubleshooting](#troubleshooting)
+13. [Using it as an agent skill](#using-it-as-an-agent-skill)
+14. [Credits](#credits)
 
 ---
 
@@ -72,22 +71,6 @@ xikin.doctor()                                   # security preflight report
 xikin.run_pipeline("acme.com leak", mode="corporate")
 ```
 
-## Beyond the reference implementation
-
-This project is a clean-room implementation (no code copied from OnionClaw/SICRY),
-and it adds capabilities the reference does **not** have:
-
-| Innovation | Why it matters |
-|---|---|
-| **Deterministic IOC extraction + STIX 2.1 / MISP export** (`iocs.py`) | Onions, BTC/XMR/ETH wallets, emails, hashes, CVEs, PGP fingerprints and secrets are extracted with regex — no LLM, no hallucination — and export straight into a threat-intel platform. Secrets (API keys, `password:` assignments, private-key blocks) are detected and **masked** in human output. |
-| **Per-query Tor circuit isolation** | Each engine query and each page fetch uses unique SOCKS credentials (`IsolateSOCKSAuth`) so two requests never share a circuit — an observer cannot correlate them even on the same exit node. |
-| **Corroboration scoring** | Results are grouped by host and counted across engines (`Corr` column): a host confirmed by 4 independent indexes gets a relevance bonus, index spam does not. |
-| **Tamper-evident evidence chain** (`evidence.py`) | Every fetch appends one JSONL record with the body's sha256, status, timestamp and the previous entry's hash. Editing, deleting or reordering any record breaks the chain and `evidence.py` reports the exact line — forensic provenance, not just logs. |
-| **Security preflight** (`doctor.py`) | Checks the .onion DNS resolver for leaks, ambient proxy variables that could route around Tor, control-port auth, circuit isolation config, cache integrity and the evidence chain before you investigate. |
-| **Prompt-injection hardening** | Zero-width/bidi characters are stripped and the LLM's data-delimiter tokens are neutralised before scraped content reaches a model (`sanitize_untrusted`), so a hostile page cannot escape its data envelope or smuggle evasion characters past the safety filter. |
-
----
-
 ## Requirements
 
 > Using Docker? Skip this section — the image bundles Tor and the Python
@@ -102,7 +85,7 @@ dependencies. See [Docker](#docker).
 
 ## Install
 
-### 1. Tor
+### Tor
 
 **macOS:**
 
@@ -131,7 +114,7 @@ sudo systemctl restart tor
 # then set TOR_DATA_DIR=/var/lib/tor in .env
 ```
 
-### 2. Xikin
+Then install Xikin in a virtualenv:
 
 ```bash
 git clone <your-repo> xikin && cd xikin     # or just: cd into this folder
