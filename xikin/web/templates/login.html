@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block page_title %}Sign in{% endblock %}
+{% block page_sub %}Token or user account.{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+  <form class="card auth-card" method="post" action="/login" autocomplete="off">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="card-head"><h2>Xikin access</h2></div>
+    <div class="card-body">
+      {% if error %}<div class="notice notice-bad">{{ error }}</div>{% endif %}
+      <label class="field">
+        <span class="field-label">Username</span>
+        <input class="input" type="text" name="username" autofocus
+               placeholder="leave blank for the admin token">
+      </label>
+      <label class="field">
+        <span class="field-label">Password or admin token</span>
+        <input class="input" type="password" name="token" required
+               placeholder="password / XIKIN_WEB_TOKEN">
+      </label>
+      <p class="muted small">
+        {% if users_exist %}
+        Use your account credentials. The legacy admin token still works with an
+        empty username.
+        {% else %}
+        No user accounts yet. Sign in with <code>XIKIN_WEB_TOKEN</code>, then
+        create users from the Users page.
+        {% endif %}
+      </p>
+    </div>
+    <div class="card-foot">
+      <button class="btn btn-primary" type="submit">Unlock</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

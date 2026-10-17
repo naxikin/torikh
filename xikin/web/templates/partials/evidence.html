@@ -1,0 +1,33 @@
+<div class="card" id="evidence-panel">
+  <div class="card-head">
+    <h2>Evidence chain</h2>
+    <span class="badge {{ 'badge-ok' if verification.ok else 'badge-bad' }}"><span class="dot"></span>{{ 'verified' if verification.ok else 'broken' }}</span>
+  </div>
+  <div class="card-body">
+    <p class="muted">
+      {{ verification.entries }} record{{ '' if verification.entries == 1 else 's' }}
+      {% if verification.error %} — {{ verification.error }}{% else %} — sha256 hash chain intact{% endif %}
+    </p>
+    {% if entries %}
+    <div class="table-scroll">
+      <table class="table table-compact">
+        <thead><tr><th>Time</th><th>Kind</th><th>URL</th><th>Status</th><th>SHA-256</th></tr></thead>
+        <tbody>
+          {% for row in entries %}
+          <tr>
+            <td class="mono small">{{ row.ts | ts }}</td>
+            <td class="muted">{{ row.kind or '—' }}</td>
+            <td class="mono small trunc" title="{{ row.url }}">{{ row.url }}</td>
+            <td class="mono">{{ row.status if row.status is not none else '—' }}</td>
+            <td class="mono small trunc" title="{{ row.sha256 }}">{{ (row.sha256 or '—')[:20] }}{% if row.sha256 %}…{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+  <div class="card-foot">
+    <button class="btn btn-ghost" type="button" data-action="verify-evidence" data-target="#evidence-panel" data-busy="Verifying…">Verify chain</button>
+  </div>
+</div>

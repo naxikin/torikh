@@ -64,7 +64,8 @@ def fetch(url: str,
           extract_links: bool = False,
           max_chars: Optional[int] = None,
           use_cache: bool = True,
-          session=None) -> Dict[str, object]:
+          session=None,
+          timeout=None) -> Dict[str, object]:
     """Fetch one URL through Tor.
 
     Returns ``{ok, url, status, title, text, links, cached, error}``; ``status``
@@ -89,7 +90,8 @@ def fetch(url: str,
     status_code, body, error = 0, "", None
     raw_bytes = b""
     try:
-        response = session.get(url, timeout=request_timeout(), allow_redirects=True)
+        response = session.get(url, timeout=timeout or request_timeout(),
+                               allow_redirects=True)
         status_code = response.status_code
         raw_bytes = response.content or b""
         if response.encoding is None or response.encoding.lower() == "iso-8859-1":

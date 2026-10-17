@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_sub %}Tor health, index coverage, investigations and quick triage.{% endblock %}
+{% block actions %}
+  <a class="btn btn-ghost" href="/dashboard.pdf">Export PDF</a>
+  <a class="btn btn-ghost" href="/tools">Tools</a>
+  {% if can_write %}<a class="btn btn-primary" href="/new">New investigation</a>{% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="grid grid-4 stats">
+  <div class="card stat">
+    <span class="stat-label">Investigations</span>
+    <span class="stat-value mono">{{ stats.runs }}</span>
+  </div>
+  <div class="card stat">
+    <span class="stat-label">Results collected</span>
+    <span class="stat-value mono">{{ stats.results }}</span>
+  </div>
+  <div class="card stat">
+    <span class="stat-label">Indicators</span>
+    <span class="stat-value mono">{{ stats.indicators }}</span>
+  </div>
+  <div class="card stat">
+    <span class="stat-label">Evidence records</span>
+    <span class="stat-value mono">{{ stats.evidence }}</span>
+  </div>
+</section>
+
+{% if active_job %}
+<div class="card active-run">
+  <div class="card-head">
+    <h2>Running investigation</h2>
+    <span class="badge badge-warn"><span class="dot"></span>{{ active_job.meta.status }}</span>
+  </div>
+  <div class="card-body">
+    <div class="active-row">
+      <div>
+        <p class="strong">{{ active_job.meta.query }}</p>
+        <p class="muted small mono">{{ active_job.last_line }}</p>
+      </div>
+      <a class="btn btn-ghost btn-sm" href="/runs/{{ active_job.meta.id }}">Open live run</a>
+    </div>
+    <div class="progress" role="progressbar" aria-label="Active run progress">
+      <div class="progress-fill" data-progress="{{ active_job.progress }}"></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if alerts or acked_count %}
+<div class="card">
+  <div class="card-head">
+    <h2>Needs attention</h2>
+    <div class="card-head-actions">
+      {% if acked_count %}
+      <span class="muted small">{{ acked_count }} acknowledged</span>
+      <form method="post" action="/alerts/reset">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="btn btn-sm btn-ghost" type="submit">Reset acknowledged</button>
+      </form>
+      {% endif %}
+      <span class="badge badge-warn"><span class="dot"></span>{{ alerts | length }}</span>
+    </div>
+  </div>
+  <div class="card-body alert-list">
+    {% for alert in alerts %}
+    <div class="alert-item">
+      <span class="badge {{ 'badge-bad' if alert.level == 'bad' else 'badge-warn' }}"><span class="dot"></span>{{ alert.level }}</span>
+      <span class="alert-text">{{ alert.text }}</span>
+      <a class="link small" href="{{ alert.href }}">{{ alert.action }}</a>
+      <form method="post" action="/alerts/ack">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="key" value="{{ alert.key }}">
+        <input type="hidden" name="signature" value="{{ alert.signature }}">
+        <button class="btn btn-sm btn-ghost" type="submit">Acknowledge</button>
+      </form>
+    </div>
+    {% endfor %}
+    {% if alerts %}
+    <form method="post" action="/alerts/ack" class="alert-ack-all">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {% for alert in alerts %}
+      <input type="hidden" name="key" value="{{ alert.key }}">
+      <input type="hidden" name="signature" value="{{ alert.signature }}">
+      {% endfor %}
+      <button class="btn btn-sm btn-ghost" type="submit">Acknowledge all</button>
+    </form>
+    {% else %}
+    <p class="muted small">All clear — every current alert is acknowledged.</p>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<section class="grid grid-2">
+  <div class="card" id="tor-panel" data-autoload="/partials/tor">
+    <div class="card-head"><h2>Tor</h2><span class="badge badge-muted"><span class="dot"></span>checking</span></div>
+    <div class="card-body"><p class="muted">Verifying circuit and exit node…</p></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Evidence chain</h2>
+      <span class="badge {{ 'badge-ok' if evidence.ok else 'badge-bad' }}"><span class="dot"></span>{{ 'verified' if evidence.ok else 'broken' }}</span>
+    </div>
+    <div class="card-body">
+      <dl class="kv">
+        <dt>Records</dt><dd class="mono">{{ evidence.entries }}</dd>
+        <dt>Log</dt><dd class="mono small trunc">{{ settings.evidence_path }}</dd>
+        <dt>Status</dt><dd class="muted">{{ evidence.error or 'sha256 hash chain intact' }}</dd>
+      </dl>
+    </div>
+    <div class="card-foot"><a class="btn btn-ghost" href="/evidence">Open evidence explorer</a></div>
+  </div>
+</section>
+
+<section class="grid grid-2">
+  <form class="card" method="post" action="/runs">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="card-head">
+      <h2>Quick start</h2>
+      <span class="badge badge-muted"><span class="dot"></span>pipeline</span>
+    </div>
+    <div class="card-body">
+      <label class="field">
+        <span class="field-label">Query</span>
+        <input class="input" type="text" name="query" required maxlength="300"
+               placeholder="e.g. linkaja credential leak">
+        <span class="field-hint">3–5 keywords. Runs with all alive engines and mode defaults.</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Analysis mode</span>
+        <select class="input" name="mode">
+          {% for key, config in modes.items() %}
+          <option value="{{ key }}" {% if key == 'threat_intel' %}selected{% endif %}>{{ config.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div class="form-actions">
+        <span class="muted small">
+          {% if not can_write %}Read-only role — ask an admin for analyst access.
+          {% else %}{{ 'Wait for the active run to finish.' if active_job else 'One investigation at a time.' }}{% endif %}
+        </span>
+        <button class="btn btn-primary" type="submit" {% if active_job or not can_write %}disabled{% endif %}>Start</button>
+      </div>
+    </div>
+  </form>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head">
+        <h2>Check a URL</h2>
+        <span class="badge badge-muted"><span class="dot"></span>via Tor</span>
+      </div>
+      <div class="card-body">
+        <form method="post" action="/tools/fetch" data-ajax="urlcheck" id="urlcheck-form">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <label class="field">
+            <span class="field-label">URL</span>
+            <input class="input" type="text" name="url" required
+                   placeholder="http://....onion/  or  https://example.com/">
+            <span class="field-hint">Status, title, hash and indicator count. Use Tools for full text and links.</span>
+          </label>
+          <div class="form-actions">
+            <span class="muted small">Never rendered as HTML.</span>
+            <button class="btn btn-primary" type="submit">Check URL</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div id="urlcheck-panel" class="check-panel"></div>
+  </div>
+</section>
+
+<div class="card" id="engines-panel" data-autoload="/partials/engines">
+  <div class="card-head"><h2>Search engines</h2><span class="badge badge-muted"><span class="dot"></span>loading</span></div>
+  <div class="card-body"><p class="muted">Loading the last engine health check…</p></div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2>Indicator overview</h2>
+    <span class="muted small">recent runs</span>
+  </div>
+  <div class="card-body">
+    {% if ioc_top %}
+    <ul class="mini-list">
+      {% for item in ioc_top %}
+      <li><span>{{ item.label }}</span><span class="mono">{{ item.count }}</span></li>
+      {% endfor %}
+    </ul>
+    <p class="muted small">{{ ioc_total }} indicator values across recent investigations.</p>
+    {% else %}
+    <p class="muted small">No indicators extracted yet.</p>
+    {% endif %}
+  </div>
+  <div class="card-foot"><a class="btn btn-ghost btn-sm" href="/runs">All investigations</a></div>
+</div>
+
+<section class="grid grid-2">
+  <div class="card">
+    <div class="card-head">
+      <h2>Monitoring</h2>
+      <span class="pill {{ 'pill-ok' if watch_enabled else 'pill-muted' }}">{{ watch_enabled }} active</span>
+    </div>
+    <div class="card-body">
+      {% if watch_jobs %}
+      <dl class="kv">
+        <dt>Jobs</dt><dd class="mono">{{ watch_jobs | length }}</dd>
+        <dt>Next run</dt><dd class="mono small">{{ watch_next | ts if watch_next else 'not scheduled' }}</dd>
+        <dt>New findings</dt><dd class="mono">{{ watch_new_total }}</dd>
+        <dt>Webhook</dt><dd>{{ 'configured' if settings.webhook_url else 'not configured' }}</dd>
+      </dl>
+      {% else %}
+      <p class="muted small">No watch jobs yet. Save a query and optionally run it on a schedule.</p>
+      {% endif %}
+    </div>
+    <div class="card-foot"><a class="btn btn-ghost btn-sm" href="/watch">Manage watch jobs</a></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Activity</h2>
+      <span class="muted small">last 14 days</span>
+    </div>
+    <div class="card-body">
+      <div class="chart">
+        {% for day in activity %}
+        <div class="chart-col" title="{{ day.label }}: {{ day.count }} run(s)">
+          <div class="chart-track"><div class="chart-fill" data-pct="{{ day.pct }}"></div></div>
+          <span class="chart-label">{{ day.label }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="grid grid-2">
+  <div class="card">
+    <div class="card-head">
+      <h2>Recent investigations</h2>
+      <a class="link small" href="/runs">View all</a>
+    </div>
+    <div class="card-body card-body-flush">
+      {% if runs %}
+      <table class="table table-compact">
+        <thead><tr><th>Query</th><th>Mode</th><th>Status</th><th>Created</th><th class="actions-cell">Check</th></tr></thead>
+        <tbody>
+          {% for run in runs %}
+          <tr>
+            <td><a class="link strong" href="/runs/{{ run.id }}">{{ run.query }}</a></td>
+            <td class="muted">{{ run.mode }}</td>
+            <td><span class="badge {{ 'badge-ok' if run.status == 'done' else ('badge-bad' if run.status == 'error' else 'badge-warn') }}"><span class="dot"></span>{{ run.status }}</span></td>
+            <td class="mono small">{{ run.created | ts }}</td>
+            <td class="actions-cell">
+              <button class="btn btn-ghost btn-sm" type="button"
+                      data-action="check-run" data-run="{{ run.id }}"
+                      data-target="#run-check-panel" data-busy="Checking…">Check</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">
+        <p class="strong">No investigations yet</p>
+        <p class="muted">Start with a short keyword query — 3 to 5 words work best on onion indexes.</p>
+        <a class="btn btn-primary" href="/new">Run the first investigation</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Runtime</h2>
+      <span class="badge {{ 'badge-ok' if llm_ready else 'badge-muted' }}"><span class="dot"></span>{{ 'LLM ready' if llm_ready else 'offline mode' }}</span>
+    </div>
+    <div class="card-body">
+      <dl class="kv">
+        <dt>Provider</dt><dd class="mono">{{ provider }}</dd>
+        <dt>Circuit isolation</dt><dd>{{ 'enabled' if settings.isolate_circuits else 'disabled' }}</dd>
+        <dt>Search workers</dt><dd class="mono">{{ settings.search_workers }}</dd>
+        <dt>Auth</dt><dd>{{ 'token required' if token_enabled else 'disabled' }}</dd>
+      </dl>
+      <p class="muted small">Secrets found in scraped pages are masked in this UI. Use the STIX/MISP exports for tooling.</p>
+    </div>
+    <div class="card-foot">
+      <a class="btn btn-ghost" href="/settings">Settings</a>
+      <a class="btn btn-ghost" href="/evidence">Evidence</a>
+    </div>
+  </div>
+</section>
+
+<div id="run-check-panel" class="check-panel"></div>
+{% endblock %}

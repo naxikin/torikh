@@ -42,6 +42,9 @@ if ! grep -q "Bootstrapped 100%" "$TOR_LOG" 2>/dev/null; then
 fi
 
 case "$1" in
+    web)
+        exec python -m xikin.web
+        ;;
     python|python3|bash|sh)
         exec "$@"
         ;;

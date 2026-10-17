@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}New investigation{% endblock %}
+{% block page_title %}New investigation{% endblock %}
+{% block page_sub %}Refine, search, filter, scrape and extract indicators in one run.{% endblock %}
+
+{% block content %}
+{% if active_run %}
+<div class="banner banner-warn">
+  An investigation is already running. Wait for it to finish before starting another.
+  <a class="link" href="/runs/{{ active_run }}">Open the active run →</a>
+</div>
+{% endif %}
+{% if error %}<div class="banner banner-bad">{{ error }}</div>{% endif %}
+{% if not can_write %}
+<div class="banner banner-warn">Your role is read-only. Ask an admin for analyst access to start investigations.</div>
+{% endif %}
+
+<form class="card form-card" method="post" action="/runs">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="card-body">
+    <label class="field">
+      <span class="field-label">Query</span>
+      <input class="input input-lg" type="text" name="query" required autofocus
+             placeholder="e.g. acme.com credential leak" maxlength="300">
+      <span class="field-hint">Use 3–5 keywords. Dark-web indexes respond poorly to full sentences.</span>
+    </label>
+
+    <div class="form-row">
+      <label class="field">
+        <span class="field-label">Analysis mode</span>
+        <select class="input" name="mode">
+          {% for key, config in modes.items() %}
+          <option value="{{ key }}" {% if key == 'threat_intel' %}selected{% endif %}>{{ config.label }}</option>
+          {% endfor %}
+        </select>
+        <span class="field-hint">Controls LLM focus and the report sections.</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Max results kept</span>
+        <input class="input" type="number" name="max_results" min="0" max="200" placeholder="mode default">
+        <span class="field-hint">0 = use the mode default.</span>
+      </label>
+      <label class="field">
+        <span class="field-label">Pages to scrape</span>
+        <input class="input" type="number" name="scrape" min="0" max="50" placeholder="mode default">
+        <span class="field-hint">0 = use the mode default.</span>
+      </label>
+    </div>
+
+    <fieldset class="field">
+      <legend class="field-label">Engines</legend>
+      <div class="check-grid">
+        {% for name in engine_names %}
+        <label class="check">
+          <input type="checkbox" name="engines" value="{{ name }}">
+          <span>{{ name }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <span class="field-hint">Leave all unchecked to query every engine currently marked alive.</span>
+    </fieldset>
+  </div>
+  <div class="card-foot form-foot">
+    <p class="muted small">Runs execute through Tor with per-query circuit isolation. Only one run at a time.</p>
+    <button class="btn btn-primary" type="submit" {% if active_run or not can_write %}disabled{% endif %}>Start investigation</button>
+  </div>
+</form>
+
+<div class="card">
+  <div class="card-head"><h2>What happens in a run</h2></div>
+  <div class="card-body">
+    <ol class="steps">
+      <li><span class="step-n">1</span> Verify Tor and the exit node</li>
+      <li><span class="step-n">2</span> Check which search engines are alive</li>
+      <li><span class="step-n">3</span> Refine the query to focused keywords</li>
+      <li><span class="step-n">4</span> Search all selected engines in parallel</li>
+      <li><span class="step-n">5</span> Score and filter the most relevant results</li>
+      <li><span class="step-n">6</span> Scrape the top pages concurrently</li>
+      <li><span class="step-n">7</span> Extract indicators deterministically and analyse</li>
+      <li><span class="step-n">8</span> Write the report and append evidence hashes</li>
+    </ol>
+  </div>
+</div>
+{% endblock %}

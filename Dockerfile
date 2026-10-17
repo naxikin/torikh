@@ -32,4 +32,5 @@ ENV TOR_DATA_DIR=/home/xikin/.tor-data \
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/app/docker/entrypoint.sh"]
 CMD ["doctor.py"]
+EXPOSE 8080
 VOLUME ["/home/xikin/.xikin"]

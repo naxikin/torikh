@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Monitoring{% endblock %}
+{% block page_title %}Monitoring{% endblock %}
+{% block page_sub %}Saved queries with optional scheduled runs and webhook alerts.{% endblock %}
+{% block actions %}<a class="btn btn-primary" href="/new">New investigation</a>{% endblock %}
+
+{% block content %}
+{% if created %}
+<div class="banner banner-ok">Watch job <span class="mono">{{ created }}</span> created.</div>
+{% endif %}
+{% if started %}
+<div class="banner banner-ok">Watch run <span class="mono">{{ started }}</span> started.</div>
+{% endif %}
+{% if deleted %}
+<div class="banner banner-ok">Watch job <span class="mono">{{ deleted }}</span> deleted.</div>
+{% endif %}
+{% if error == 'busy' %}
+<div class="banner banner-bad">Another investigation is running. Try again when it finishes.</div>
+{% elif error == 'invalid' %}
+<div class="banner banner-bad">Query must be at least 2 characters and the mode must be valid.</div>
+{% endif %}
+
+{% if not can_write %}
+<div class="banner banner-warn">Your role is read-only. Ask an admin for analyst access to manage watch jobs.</div>
+{% endif %}
+<section class="grid grid-2">
+  {% if can_write %}
+  <form class="card" method="post" action="/watch/create">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="card-head">
+      <h2>New watch job</h2>
+      <span class="badge badge-muted"><span class="dot"></span>saved query</span>
+    </div>
+    <div class="card-body">
+      <label class="field">
+        <span class="field-label">Query</span>
+        <input class="input" type="text" name="query" required maxlength="300"
+               placeholder="e.g. acme.com credential leak">
+      </label>
+      <div class="form-row">
+        <label class="field">
+          <span class="field-label">Analysis mode</span>
+          <select class="input" name="mode">
+            {% for key, config in modes.items() %}
+            <option value="{{ key }}" {% if key == 'threat_intel' %}selected{% endif %}>{{ config.label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="field">
+          <span class="field-label">Every (hours)</span>
+          <input class="input" type="number" name="interval_hours" value="0"
+                 min="0" max="168" step="0.5">
+          <span class="field-hint">0 = saved query, run manually.</span>
+        </label>
+      </div>
+      <p class="muted small">
+        Webhook notifications:
+        <strong>{{ 'configured' if webhook_configured else 'not configured' }}</strong>
+        {% if not webhook_configured %}— set <code>XIKIN_WEBHOOK_URL</code> to receive new-result alerts.{% endif %}
+      </p>
+    </div>
+    <div class="card-foot">
+      <span class="muted small">Scheduled runs only start when no investigation is active.</span>
+      <button class="btn btn-primary" type="submit">Save watch job</button>
+    </div>
+  </form>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-head"><h2>How it works</h2></div>
+    <div class="card-body">
+      <ol class="steps">
+        <li><span class="step-n">1</span> Save a query (optionally with an interval).</li>
+        <li><span class="step-n">2</span> The scheduler runs due jobs sequentially, one at a time.</li>
+        <li><span class="step-n">3</span> Each run compares its result URLs with the previous run.</li>
+        <li><span class="step-n">4</span> New URLs trigger a webhook (when configured) and appear here.</li>
+      </ol>
+      <p class="muted small">
+        Runs use the normal pipeline, evidence chain and safety filters. Watch jobs never
+        scrape more than the mode defaults; adjust depth by running a full investigation.
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="card">
+  <div class="card-head">
+    <h2>Watch jobs</h2>
+    <span class="muted small">{{ jobs | length }} saved</span>
+  </div>
+  <div class="card-body card-body-flush">
+    {% if jobs %}
+    <table class="table">
+      <thead>
+        <tr><th>Query</th><th>Mode</th><th>Every</th><th>State</th><th>Last run</th><th>Last result</th><th class="actions-cell">Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for job in jobs %}
+        <tr>
+          <td>
+            <span class="strong">{{ job.query }}</span>
+            <div class="muted small mono">{{ job.id }}</div>
+          </td>
+          <td class="muted">{{ job.mode }}</td>
+          <td class="mono">{{ ('%g h' | format(job.interval_hours)) if job.interval_hours else 'manual' }}</td>
+          <td>
+            <span class="badge {{ 'badge-ok' if job.enabled else 'badge-muted' }}">
+              <span class="dot"></span>{{ 'active' if job.enabled else 'paused' }}
+            </span>
+          </td>
+          <td class="mono small">{{ job.last_run | ts if job.last_run else '—' }}</td>
+          <td class="mono small">
+            {{ job.last_results or 0 }} res · {{ job.last_indicators or 0 }} ioc
+            {% if job.last_new %}<span class="pill pill-ok">{{ job.last_new }} new</span>{% endif %}
+            {% if job.last_status == 'error' %}<span class="badge badge-bad"><span class="dot"></span>error</span>{% endif %}
+          </td>
+          <td class="actions-cell">
+            {% if can_write %}
+            <form method="post" action="/watch/{{ job.id }}/run">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <button class="btn btn-sm btn-ghost" type="submit">Run now</button>
+            </form>
+            <form method="post" action="/watch/{{ job.id }}/toggle">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <button class="btn btn-sm btn-ghost" type="submit">{{ 'Pause' if job.enabled else 'Resume' }}</button>
+            </form>
+            <form method="post" action="/watch/{{ job.id }}/delete"
+                  data-confirm="Delete watch job “{{ job.query }}”? Past runs and evidence are kept.">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <button class="btn btn-sm btn-danger" type="submit">Delete</button>
+            </form>
+            {% else %}
+            <span class="muted small">read-only</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">
+      <p class="strong">No watch jobs yet</p>
+      <p class="muted">Save a query above to reuse it, or give it an interval for scheduled monitoring.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

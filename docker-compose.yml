@@ -1,24 +1,39 @@
+x-common: &common
+  build: .
+  image: xikin:local
+  env_file:
+    - .env
+  environment:
+    TOR_DATA_DIR: /home/xikin/.tor-data
+    XIKIN_DB_PATH: /home/xikin/.xikin/xikin.db
+    XIKIN_EVIDENCE_LOG: /home/xikin/.xikin/evidence.jsonl
+  volumes:
+    - xikin-data:/home/xikin/.xikin
+    - tor-data:/home/xikin/.tor-data
+    - ./reports:/reports
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
 services:
   xikin:
-    build: .
-    image: xikin:local
-    env_file:
-      - .env
+    <<: *common
+
+  web:
+    <<: *common
+    command: ["web"]
     environment:
       TOR_DATA_DIR: /home/xikin/.tor-data
       XIKIN_DB_PATH: /home/xikin/.xikin/xikin.db
       XIKIN_EVIDENCE_LOG: /home/xikin/.xikin/evidence.jsonl
-    volumes:
-      - xikin-data:/home/xikin/.xikin
-      - tor-data:/home/xikin/.tor-data
-      - ./reports:/reports
-    read_only: true
-    tmpfs:
-      - /tmp
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
+      XIKIN_WEB_HOST: 0.0.0.0
+    ports:
+      - "127.0.0.1:${XIKIN_WEB_PUBLISH_PORT:-8080}:8080"
+    restart: unless-stopped
 
 volumes:
   xikin-data:

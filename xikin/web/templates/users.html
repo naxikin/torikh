@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block page_title %}Users{% endblock %}
+{% block page_sub %}Role-based access: admin, analyst, viewer.{% endblock %}
+
+{% block content %}
+{% if created %}
+<div class="banner banner-ok">User <span class="mono">{{ created }}</span> created.</div>
+{% endif %}
+{% if error == 'invalid' %}
+<div class="banner banner-bad">Invalid input: username is required, password must be at least 8 characters, role must be valid, and the username must be new.</div>
+{% elif error == 'self' %}
+<div class="banner banner-bad">You cannot delete or disable your own account.</div>
+{% elif error == 'last_admin' %}
+<div class="banner banner-bad">At least one enabled admin must remain.</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-head">
+    <h2>Add user</h2>
+    <span class="badge badge-muted"><span class="dot"></span>admin only</span>
+  </div>
+  <form method="post" action="/users/create">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="card-body">
+      <div class="form-row">
+        <label class="field">
+          <span class="field-label">Username</span>
+          <input class="input" type="text" name="username" required maxlength="64">
+        </label>
+        <label class="field">
+          <span class="field-label">Password</span>
+          <input class="input" type="password" name="password" required minlength="8">
+        </label>
+        <label class="field">
+          <span class="field-label">Role</span>
+          <select class="input" name="role">
+            <option value="viewer">viewer — read only</option>
+            <option value="analyst">analyst — run, fetch, monitor</option>
+            <option value="admin">admin — everything</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div class="card-foot">
+      <span class="muted small">Passwords are stored as PBKDF2-SHA256 hashes.</span>
+      <button class="btn btn-primary" type="submit">Create user</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>Accounts</h2><span class="muted small">{{ users | length }} user(s)</span></div>
+  <div class="card-body card-body-flush">
+    <table class="table">
+      <thead><tr><th>Username</th><th>Role</th><th>State</th><th>Created</th><th class="actions-cell">Actions</th></tr></thead>
+      <tbody>
+        {% for account in users %}
+        <tr>
+          <td class="strong mono">{{ account.username }}{% if account.username == user %} <span class="muted small">(you)</span>{% endif %}</td>
+          <td>
+            <form method="post" action="/users/{{ account.username }}/role" class="role-form">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <select class="input input-xs" name="role">
+                {% for role_name in ("viewer", "analyst", "admin") %}
+                <option value="{{ role_name }}" {% if account.role == role_name %}selected{% endif %}>{{ role_name }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-sm btn-ghost" type="submit">Save</button>
+            </form>
+          </td>
+          <td>
+            <span class="badge {{ 'badge-ok' if account.enabled else 'badge-muted' }}"><span class="dot"></span>{{ 'active' if account.enabled else 'disabled' }}</span>
+          </td>
+          <td class="mono small">{{ account.created | ts }}</td>
+          <td class="actions-cell">
+            <form method="post" action="/users/{{ account.username }}/toggle">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <button class="btn btn-sm btn-ghost" type="submit" {% if account.username == user %}disabled{% endif %}>{{ 'Disable' if account.enabled else 'Enable' }}</button>
+            </form>
+            <form method="post" action="/users/{{ account.username }}/delete"
+                  data-confirm="Delete user “{{ account.username }}”?">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <button class="btn btn-sm btn-danger" type="submit" {% if account.username == user %}disabled{% endif %}>Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

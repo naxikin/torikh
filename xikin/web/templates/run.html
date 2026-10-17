@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}{{ run.query }}{% endblock %}
+{% block page_title %}{{ run.query }}{% endblock %}
+{% block page_sub %}
+  {{ run.mode }} · run {{ run.id[:8] }} · created {{ run.created | ts }}
+{% endblock %}
+{% block actions %}
+  {% if run.status == 'done' %}
+  <a class="btn btn-ghost" href="/runs/{{ run.id }}/report.md">Download report</a>
+  {% endif %}
+  <a class="btn btn-ghost" href="/new">New run</a>
+  {% if not running and is_admin %}
+  <form method="post" action="/runs/{{ run.id }}/delete"
+        data-confirm="Delete this investigation? Report and artifacts will be removed. Evidence log records remain.">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="btn btn-ghost" type="submit">Delete</button>
+  </form>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-4 stats">
+  <div class="card stat">
+    <span class="stat-label">Status</span>
+    <span class="badge {{ 'badge-ok' if run.status == 'done' else ('badge-bad' if run.status == 'error' else 'badge-warn') }}"><span class="dot"></span>{{ run.status }}</span>
+  </div>
+  <div class="card stat">
+    <span class="stat-label">Results</span>
+    <span class="stat-value mono">{{ run.results_count or 0 }}</span>
+  </div>
+  <div class="card stat">
+    <span class="stat-label">Indicators</span>
+    <span class="stat-value mono">{{ run.indicator_count or 0 }}</span>
+  </div>
+  <div class="card stat">
+    <span class="stat-label">Refined query</span>
+    <span class="stat-value mono small">{{ run.refined_query or '—' }}</span>
+  </div>
+</div>
+
+{% if running %}
+<div class="card" id="run-live" data-run="{{ run.id }}"
+     data-events="/api/runs/{{ run.id }}/events" data-status="{{ run.status }}">
+  <div class="card-head">
+    <h2>Live investigation</h2>
+    <span class="badge badge-warn"><span class="dot"></span>{{ run.status }}</span>
+  </div>
+  <div class="card-body">
+    <div class="progress" role="progressbar" aria-label="Run progress">
+      <div class="progress-fill" id="run-progress"></div>
+    </div>
+    <div class="progress-meta">
+      <span class="muted small">Steps run: verify → engines → refine → search → filter → scrape → analyse → report</span>
+      <span class="mono small" id="run-progress-label">0%</span>
+    </div>
+    <div class="log" id="run-log" aria-live="polite"></div>
+  </div>
+</div>
+{% elif run.status == 'error' %}
+<div class="card">
+  <div class="card-head"><h2>Run failed</h2><span class="badge badge-bad"><span class="dot"></span>error</span></div>
+  <div class="card-body"><p class="mono">{{ run.error or 'unknown error' }}</p></div>
+</div>
+{% else %}
+
+<div class="run-toolbar">
+  <div class="tabs" role="tablist">
+    <button class="tab is-active" type="button" data-tab="results">Results <span class="tab-count">{{ result.get('results', []) | length }}</span></button>
+    <button class="tab" type="button" data-tab="iocs">Indicators <span class="tab-count">{{ result.get('indicator_count', 0) }}</span></button>
+    <button class="tab" type="button" data-tab="scraped">Scraped <span class="tab-count">{{ result.get('scraped', []) | length }}</span></button>
+    <button class="tab" type="button" data-tab="report">Report</button>
+  </div>
+  <div class="run-exports">
+    <span class="muted small">Export IOCs:</span>
+    <a class="btn btn-ghost btn-sm" href="/runs/{{ run.id }}/export/stix">STIX 2.1</a>
+    <a class="btn btn-ghost btn-sm" href="/runs/{{ run.id }}/export/misp">MISP</a>
+    <a class="btn btn-ghost btn-sm" href="/runs/{{ run.id }}/export/csv">CSV</a>
+  </div>
+</div>
+
+<section class="tab-panel is-active" data-panel="results">
+  <div class="card">
+    <div class="card-body card-body-flush">
+      {% if result.get('results') %}
+      <table class="table">
+        <thead><tr><th>#</th><th>Score</th><th>CR</th><th>Engine</th><th>Title</th><th>URL</th></tr></thead>
+        <tbody>
+          {% for row in result.get('results', []) %}
+          <tr>
+            <td class="mono muted">{{ loop.index }}</td>
+            <td class="mono">{{ '%.2f' | format(row.get('score', 0)) }}</td>
+            <td><span class="pill {{ 'pill-ok' if row.get('corroboration', 1) > 1 else 'pill-muted' }}">{{ row.get('corroboration', 1) }}</span></td>
+            <td class="muted">{{ row.get('engine', '—') }}</td>
+            <td>{{ row.get('title') or '(untitled)' }}</td>
+            <td class="url-cell">
+              <span class="mono small trunc" title="{{ row.get('url', '') }}">{{ row.get('url', '') }}</span>
+              <button class="icon-btn" type="button" data-copy="{{ row.get('url', '') }}" aria-label="Copy URL">⧉</button>
+              <a class="icon-btn" href="/tools?url={{ row.get('url', '') | urlencode }}" title="Analyse this URL" aria-label="Analyse this URL">↗</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty"><p class="strong">No results</p><p class="muted">Indexes fluctuate — try another query or engine set.</p></div>
+      {% endif %}
+    </div>
+    <div class="card-foot muted small">
+      CR = corroboration: how many independent engines returned the same host. URLs are copy-only by design — open them in Tor Browser.
+    </div>
+  </div>
+</section>
+
+<section class="tab-panel" data-panel="iocs">
+  <div class="card">
+    <div class="card-head">
+      <h2>Extracted indicators</h2>
+      <span class="muted small">deterministic regex extraction · secrets masked</span>
+    </div>
+    <div class="card-body">
+      {% if iocs %}
+      {% include "partials/ioc_groups.html" %}
+      {% else %}
+      <div class="empty"><p class="strong">No indicators</p><p class="muted">The scraped pages contained no extractable indicators.</p></div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="tab-panel" data-panel="scraped">
+  <div class="card">
+    <div class="card-head"><h2>Scraped pages</h2><span class="muted small">{{ result.get('scraped', []) | length }} page(s)</span></div>
+    <div class="card-body">
+      {% if result.get('scraped') %}
+      <ul class="url-list">
+        {% for url in result.get('scraped', []) %}
+        <li>
+          <span class="mono small trunc" title="{{ url }}">{{ url }}</span>
+          <button class="icon-btn" type="button" data-copy="{{ url }}" aria-label="Copy URL">⧉</button>
+        </li>
+        {% endfor %}
+      </ul>
+      <p class="muted small">Excerpts and analysis are in the report tab. Raw bodies are not rendered as HTML.</p>
+      {% else %}
+      <div class="empty"><p class="strong">Nothing scraped</p><p class="muted">All selected pages were offline, empty or blocked by the safety filter.</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if result.get('errors') %}
+  <div class="card">
+    <div class="card-head"><h2>Errors</h2></div>
+    <div class="card-body"><ul class="error-list">{% for error in result.get('errors', []) %}<li class="mono small">{{ error }}</li>{% endfor %}</ul></div>
+  </div>
+  {% endif %}
+</section>
+
+<section class="tab-panel" data-panel="report">
+  <div class="card">
+    <div class="card-head">
+      <h2>Report</h2>
+      <div class="card-head-actions">
+        <a class="btn btn-ghost btn-sm" href="/runs/{{ run.id }}/report.md">Download .md</a>
+      </div>
+    </div>
+    <div class="card-body">
+      <pre class="report mono">{{ result.get('report', '') }}</pre>
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

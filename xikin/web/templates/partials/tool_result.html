@@ -1,0 +1,90 @@
+{% if result.kind == 'url' %}
+  {% set fetched = result.fetch %}
+  <div class="card">
+    <div class="card-head">
+      <h2>URL analysis</h2>
+      <span class="badge {{ 'badge-ok' if fetched.ok else 'badge-bad' }}"><span class="dot"></span>{{ ('HTTP ' ~ fetched.status) if fetched.status else 'unreachable' }}</span>
+    </div>
+    <div class="card-body">
+      <dl class="kv">
+        <dt>URL</dt>
+        <dd><span class="mono small trunc" title="{{ fetched.url }}">{{ fetched.url }}</span>
+          <button class="icon-btn" type="button" data-copy="{{ fetched.url }}" aria-label="Copy URL">⧉</button></dd>
+        <dt>Title</dt><dd>{{ fetched.title or '—' }}</dd>
+        <dt>Body SHA-256</dt><dd class="mono small trunc">{{ fetched.sha256 or '—' }}</dd>
+        <dt>Size</dt><dd class="mono">{{ fetched.bytes or 0 }} bytes</dd>
+        <dt>Error</dt><dd class="muted">{{ fetched.error or '—' }}</dd>
+      </dl>
+      {% if fetched.text %}
+      <details class="details" open>
+        <summary>Page text ({{ fetched.text | length }} chars)</summary>
+        <pre class="report mono">{{ fetched.text }}</pre>
+      </details>
+      {% endif %}
+      {% if fetched.links %}
+      <h3 class="ioc-title">Links ({{ fetched.links | length }})</h3>
+      <ul class="url-list">
+        {% for link in fetched.links[:50] %}
+        <li>
+          <span class="mono small trunc" title="{{ link }}">{{ link }}</span>
+          <button class="icon-btn" type="button" data-copy="{{ link }}" aria-label="Copy link">⧉</button>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </div>
+  {% if result.iocs %}
+  <div class="card">
+    <div class="card-head"><h2>Extracted indicators</h2><span class="muted small">secrets masked</span></div>
+    <div class="card-body">
+      {% set iocs = result.iocs %}
+      {% include "partials/ioc_groups.html" %}
+    </div>
+  </div>
+  {% endif %}
+{% else %}
+  {% set analysis = result.analysis %}
+  <div class="card">
+    <div class="card-head">
+      <h2>File analysis</h2>
+      <span class="badge {{ 'badge-bad' if analysis.blocked else 'badge-ok' }}"><span class="dot"></span>{{ 'filtered' if analysis.blocked else 'analysed' }}</span>
+    </div>
+    <div class="card-body">
+      <dl class="kv">
+        <dt>Name</dt><dd class="mono">{{ analysis.name }}</dd>
+        <dt>Type</dt><dd>{{ analysis.type }}</dd>
+        <dt>Size</dt><dd class="mono">{{ analysis.size }} bytes</dd>
+        <dt>Entropy</dt><dd class="mono">{{ analysis.entropy }} / 8</dd>
+        <dt>SHA-256</dt>
+        <dd class="mono small trunc">{{ analysis.sha256 }}
+          <button class="icon-btn" type="button" data-copy="{{ analysis.sha256 }}" aria-label="Copy SHA-256">⧉</button></dd>
+        <dt>SHA-1</dt>
+        <dd class="mono small trunc">{{ analysis.sha1 }}
+          <button class="icon-btn" type="button" data-copy="{{ analysis.sha1 }}" aria-label="Copy SHA-1">⧉</button></dd>
+        <dt>MD5</dt>
+        <dd class="mono small trunc">{{ analysis.md5 }}
+          <button class="icon-btn" type="button" data-copy="{{ analysis.md5 }}" aria-label="Copy MD5">⧉</button></dd>
+        <dt>Evidence entry</dt><dd class="mono small trunc">{{ analysis.evidence_hash or '—' }}</dd>
+      </dl>
+      {% if analysis.blocked %}
+      <div class="notice notice-bad">Extracted strings were withheld by the content safety filter.</div>
+      {% endif %}
+      {% if analysis.strings_preview %}
+      <details class="details">
+        <summary>Extracted strings ({{ analysis.strings_total }} lines)</summary>
+        <pre class="report mono">{{ analysis.strings_preview }}</pre>
+      </details>
+      {% endif %}
+    </div>
+  </div>
+  {% if result.analysis.iocs %}
+  <div class="card">
+    <div class="card-head"><h2>Extracted indicators</h2><span class="muted small">from strings · secrets masked</span></div>
+    <div class="card-body">
+      {% set iocs = result.analysis.iocs %}
+      {% include "partials/ioc_groups.html" %}
+    </div>
+  </div>
+  {% endif %}
+{% endif %}

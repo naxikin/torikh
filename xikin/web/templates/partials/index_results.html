@@ -1,0 +1,31 @@
+<div class="card">
+  <div class="card-head">
+    <h2>Index search</h2>
+    <span class="muted small">{{ index_report.get('count', 0) }} unique · {{ index_report.get('elapsed_s', '?') }}s{% if index_report.get('cached') %} · cached{% endif %}</span>
+  </div>
+  <div class="card-body card-body-flush">
+    {% if index_report.get('results') %}
+    <table class="table table-compact">
+      <thead><tr><th>Engine</th><th>Score</th><th>Title</th><th>URL</th></tr></thead>
+      <tbody>
+        {% for row in index_report.results %}
+        <tr>
+          <td class="muted">{{ row.engine }}</td>
+          <td class="mono">{{ '%.2f' | format(row.score or 0) }}</td>
+          <td>{{ row.title or '(untitled)' }}</td>
+          <td class="url-cell">
+            <span class="mono small trunc" title="{{ row.url }}">{{ row.url }}</span>
+            <button class="icon-btn" type="button" data-copy="{{ row.url }}" aria-label="Copy URL">⧉</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">
+      <p class="strong">No index hits</p>
+      <p class="muted">{{ index_report.get('error') or 'No engine returned this indicator.' }}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>

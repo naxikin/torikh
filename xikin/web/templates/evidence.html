@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Evidence{% endblock %}
+{% block page_title %}Evidence{% endblock %}
+{% block page_sub %}Tamper-evident provenance for every fetched page.{% endblock %}
+{% block actions %}<a class="btn btn-ghost" href="/settings">Settings</a>{% endblock %}
+
+{% block content %}
+{% include "partials/evidence.html" %}
+
+<div class="card">
+  <div class="card-head"><h2>How the chain works</h2></div>
+  <div class="card-body">
+    <p class="muted">
+      Every successful fetch appends one JSONL record containing the raw body's
+      SHA-256, the HTTP status, a timestamp and the hash of the previous entry.
+      Changing, deleting or reordering any record breaks the chain, and
+      verification reports the exact line.
+    </p>
+    <dl class="kv">
+      <dt>Log</dt><dd class="mono small">{{ status.path }}</dd>
+      <dt>Entries</dt><dd class="mono">{{ status.entries }}</dd>
+      <dt>Last hash</dt><dd class="mono small trunc" title="{{ status.last_hash }}">{{ status.last_hash }}</dd>
+    </dl>
+    <p class="muted small">Export chains with <code>evidence.py --verify</code> or archive the JSONL file alongside your report.</p>
+  </div>
+</div>
+{% endblock %}

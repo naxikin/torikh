@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block page_sub %}Runtime configuration, storage and security posture.{% endblock %}
+
+{% block content %}
+{% if cleared is not none %}
+<div class="banner banner-ok">{{ cleared }} cache entr{{ 'y' if cleared == 1 else 'ies' }} cleared.</div>
+{% endif %}
+
+<section class="grid grid-2">
+  <div class="card">
+    <div class="card-head"><h2>Runtime</h2><span class="pill pill-muted">v{{ version }}</span></div>
+    <div class="card-body">
+      <dl class="kv">
+        <dt>Authentication</dt><dd>{{ 'enabled' if auth_enabled else 'disabled (localhost only)' }}</dd>
+        <dt>Legacy token</dt><dd>{{ 'configured' if token_enabled else 'not set' }}</dd>
+        <dt>Users</dt><dd>{{ 'managed on the Users page' if is_admin else 'admin-managed' }}</dd>
+        <dt>Bind</dt><dd class="mono">{{ settings.web_host }}:{{ settings.web_port }}</dd>
+        <dt>LLM provider</dt><dd class="mono">{{ provider }}</dd>
+        <dt>API keys</dt><dd>{{ key_state }}</dd>
+        <dt>Circuit isolation</dt><dd>{{ 'enabled' if settings.isolate_circuits else 'disabled' }}</dd>
+        <dt>Evidence logging</dt><dd>{{ 'enabled' if settings.evidence_enabled else 'disabled' }}</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Tor</h2><span class="pill pill-muted">SOCKS5</span></div>
+    <div class="card-body">
+      <dl class="kv">
+        <dt>SOCKS</dt><dd class="mono">{{ settings.tor_socks_host }}:{{ settings.tor_socks_port }}</dd>
+        <dt>Control</dt><dd class="mono">{{ settings.tor_control_host }}:{{ settings.tor_control_port }}</dd>
+        <dt>Data dir</dt><dd class="mono small trunc">{{ settings.tor_data_dir or '—' }}</dd>
+        <dt>Request timeout</dt><dd class="mono">{{ settings.tor_timeout }}s</dd>
+      </dl>
+      <p class="muted small">The control port stays inside the container/host — the web UI never exposes it.</p>
+    </div>
+  </div>
+</section>
+
+<section class="grid grid-2">
+  <div class="card">
+    <div class="card-head"><h2>Storage</h2></div>
+    <div class="card-body">
+      <dl class="kv">
+        <dt>Cache database</dt><dd class="mono small trunc">{{ cache_path }}</dd>
+        <dt>Evidence log</dt><dd class="mono small trunc">{{ evidence.path }}</dd>
+        <dt>Evidence records</dt><dd class="mono">{{ evidence.entries }}</dd>
+        <dt>Investigations</dt><dd class="mono">{{ run_count }}</dd>
+      </dl>
+    </div>
+    <div class="card-foot">
+      {% if is_admin %}
+      <form method="post" action="/settings/cache/clear">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="btn btn-danger" type="submit">Clear fetch/search cache</button>
+      </form>
+      {% else %}
+      <span class="muted small">Admin only.</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Safety</h2></div>
+    <div class="card-body">
+      <p class="muted">{{ safety_note }}</p>
+      <ul class="bullets">
+        <li>Scraped content is never rendered as HTML in this UI.</li>
+        <li>Secrets are masked by default; STIX/MISP/CSV exports carry raw values for tooling.</li>
+        <li>Zero-width and bidi characters are stripped before safety checks and LLM prompts.</li>
+        <li>URLs are copy-only — open them in Tor Browser, not your normal browser.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+{% endblock %}

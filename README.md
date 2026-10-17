@@ -28,16 +28,17 @@ python3 renew.py                                       # new circuit / identity
 2. [Requirements](#requirements)
 3. [Install](#install)
 4. [Docker](#docker)
-5. [Configuration](#configuration)
-6. [The commands](#the-commands)
-7. [Investigation flows](#investigation-flows)
-8. [Analysis modes](#analysis-modes)
-9. [Search engines](#search-engines)
-10. [Architecture](#architecture)
-11. [Safety](#safety)
-12. [Troubleshooting](#troubleshooting)
-13. [Using it as an agent skill](#using-it-as-an-agent-skill)
-14. [Credits](#credits)
+5. [Web platform](#web-platform)
+6. [Configuration](#configuration)
+7. [The commands](#the-commands)
+8. [Investigation flows](#investigation-flows)
+9. [Analysis modes](#analysis-modes)
+10. [Search engines](#search-engines)
+11. [Architecture](#architecture)
+12. [Safety](#safety)
+13. [Troubleshooting](#troubleshooting)
+14. [Using it as an agent skill](#using-it-as-an-agent-skill)
+15. [Credits](#credits)
 
 ---
 
@@ -55,6 +56,8 @@ python3 renew.py                                       # new circuit / identity
 | `iocs.py` | Deterministic IOC extraction with STIX 2.1 / MISP / CSV export |
 | `evidence.py` | Verify the tamper-evident sha256 hash chain of every fetch |
 | `doctor.py` | Security preflight: leaks, isolation, control port, evidence integrity |
+| `python -m xikin.web` | Modern web platform — dashboard, live run timeline, IOC explorer, evidence view |
+| **Tools** (web) | Fetch a URL, static-analyse a file (hash/type/entropy/strings/IOC), search indexes and optional VirusTotal lookup |
 
 Everything is also importable as a library:
 
@@ -178,6 +181,72 @@ argument — `search.py ...` (short name), `python ...`, `bash` for a shell, or
 isolation works out of the box.
 
 
+## Web platform
+
+`python -m xikin.web` serves a modern, self-hosted UI around the same pipeline —
+single service, no CDN assets, no JavaScript build step.
+
+```bash
+export XIKIN_WEB_TOKEN=$(openssl rand -hex 24)   # required beyond localhost
+python -m xikin.web
+# → http://127.0.0.1:8080
+```
+
+With Docker:
+
+```bash
+# add XIKIN_WEB_TOKEN=<long random value> to .env first
+docker compose up -d web      # published on 127.0.0.1:8080 only
+# if 8080 is taken: XIKIN_WEB_PUBLISH_PORT=8081 docker compose up -d web
+```
+
+Screens: **Dashboard** (Tor, engine health, evidence chain, recent runs),
+**New investigation** (query, mode, engines, scrape depth), **Live run**
+(SSE timeline with progress), **Run detail** (results with corroboration, IOC
+groups, scraped pages, report, STIX/MISP/CSV export), **Tools** (fetch a URL
+through Tor, static file analysis, index search, optional VirusTotal lookup),
+**Quick check** on the dashboard (artifact integrity, evidence verification,
+top indicators and a live Tor re-check of the run's targets), a **dashboard URL
+checker** (status, title, hash and indicator count without leaving the page),
+**quick-start investigation form**, aggregate **stats / alerts / indicator
+overview / recent evidence** panels,
+**Evidence explorer** (hash-chain verification and recent records) and
+**Settings** (runtime, storage, cache reset).
+
+**Tools — VirusTotal-style triage, safely:**
+
+- **Fetch URL** — retrieves a page through Tor and shows title, text, links,
+  IOCs and the body SHA-256; optional search for the URL across indexes.
+- **Analyse file** — hashes (SHA-256/SHA-1/MD5), type detection, entropy,
+  printable strings and extracted IOCs. The file is processed **in memory**,
+  never executed, uploaded or written to disk; a hash record is appended to the
+  evidence chain. Strings that trip the safety filter are withheld.
+- **VirusTotal (optional)** — with `VT_API_KEY` set, Xikin looks up the SHA-256
+  or URL (clearnet, hash/URL only — the file is never uploaded) and shows
+  detections, reputation, names and categories. No key: the option is disabled.
+
+Security posture:
+
+- **RBAC**: `admin` / `analyst` / `viewer` accounts (PBKDF2-SHA256 passwords) plus
+  the legacy `XIKIN_WEB_TOKEN` admin bootstrap; signed, HttpOnly,
+  SameSite=Strict sessions
+- **Alert acknowledgement**: per-user, signature-scoped (an alert resurfaces if
+  its state changes or after 24 h)
+- **Saved filters** for the investigations list (per user)
+- **Dashboard PDF export** (`/dashboard.pdf`)
+- **Webhook retries + HMAC signature**: up to 4 attempts (1/4/9 s backoff) and
+  `X-Xikin-Signature: sha256=<hex>` over `<timestamp>.<body>` when
+  `XIKIN_WEBHOOK_SECRET` is set
+- CSRF double-submit on every POST; strict CSP without inline scripts/styles or external assets
+- one investigation at a time; run IDs are server-validated UUIDs
+- scraped content is never rendered as HTML; secrets are masked in the UI
+- URLs are copy-only by design — open `.onion` links in Tor Browser
+- refuses to start on a non-loopback host without a token
+
+JSON API: `GET /api/runs/{id}`, `GET /api/runs/{id}/events` (SSE),
+`GET /runs/{id}/export/{stix|misp|csv|json}`, `GET /healthz`.
+
+
 ## Configuration
 
 All settings come from environment variables or a `.env` file in this folder
@@ -196,6 +265,15 @@ All settings come from environment variables or a `.env` file in this folder
 | `XIKIN_FETCH_CACHE_TTL` | `600` | fetch cache TTL (s) |
 | `XIKIN_SEARCH_CACHE_TTL` | `1800` | search cache TTL (s) |
 | `XIKIN_DB_PATH` | `~/.xikin/xikin.db` | SQLite cache + engine history |
+| `XIKIN_WEB_HOST` / `XIKIN_WEB_PORT` | `127.0.0.1:8080` | web bind address |
+| `XIKIN_WEB_TOKEN` | — | required when binding beyond localhost |
+| `XIKIN_WEB_RUNS` | `~/.xikin/web/runs` | run metadata/results/events |
+| `VT_API_KEY` | — | optional VirusTotal hash/URL enrichment (clearnet) |
+| `XIKIN_WATCH_DB` | `~/.xikin/web/watch.db` | watch-job storage |
+| `XIKIN_WEBHOOK_URL` | — | JSON webhook for new watch results (clearnet POST) |
+| `XIKIN_WEBHOOK_SECRET` | — | HMAC-SHA256 signing key for webhook bodies |
+| `XIKIN_STATE_DB` | `~/.xikin/web/state.db` | users, alert acks, saved filters |
+| `XIKIN_SESSION_SECRET` | auto-generated | session signing key (stored in state DB) |
 | `XIKIN_ISOLATE` | `1` | unique SOCKS credentials per query (needs `IsolateSOCKSAuth`) |
 | `XIKIN_EVIDENCE` | `1` | append every fetch to the hash-chained evidence log |
 | `XIKIN_EVIDENCE_LOG` | `~/.xikin/evidence.jsonl` | evidence log location |
@@ -459,6 +537,9 @@ Onion addresses rotate, die and get squatted. Two safety rules:
 - **LLM:** plain HTTP against OpenAI / Anthropic / Gemini / Ollama / llama.cpp —
   no SDK dependency. Content is wrapped as untrusted data with explicit
   prompt-injection guards.
+- **Web:** FastAPI + Jinja2 + vanilla JS with SSE progress; the UI calls the same
+  `xikin.run_pipeline` in a single background worker and renders only sanitised
+  text (no scraped HTML, masked secrets).
 
 ## Safety
 
@@ -485,6 +566,9 @@ Onion addresses rotate, die and get squatted. Two safety rules:
 | `privacy.isolation` warning | Add `IsolateSOCKSAuth` to the `SocksPort` line in torrc and restart Tor |
 | `evidence chain broken` | The log was edited after writing — inspect with `evidence.py --status`, start a fresh log with `XIKIN_EVIDENCE_LOG` to keep collecting |
 | IOC appendix empty | The scraped pages genuinely contained no indicators, or scraping failed — check the pipeline's `[6]` step output |
+| Web keeps redirecting to /login | Token mismatch or stale session cookie — clear cookies and re-enter `XIKIN_WEB_TOKEN` |
+| Web refuses to start | Binding a non-loopback host without `XIKIN_WEB_TOKEN` — set a token or bind `127.0.0.1` |
+| 401 on partials/API | Session expired — reload the page and sign in again |
 
 ## Using it as an agent skill
 

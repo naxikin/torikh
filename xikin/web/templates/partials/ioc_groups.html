@@ -1,0 +1,18 @@
+<div class="ioc-grid">
+  {% for ioc_type, items in iocs.items() %}
+  <div class="ioc-group">
+    <h3 class="ioc-title">{{ IOC_LABELS.get(ioc_type, ioc_type) }} <span class="muted">({{ items | length }})</span></h3>
+    <ul class="ioc-list">
+      {% for item in items %}
+      <li>
+        <code class="mono small">{{ item.value | mask_secret if ioc_type == 'secret' else item.value }}</code>
+        {% if item.count and item.count > 1 %}<span class="muted small">×{{ item.count }}</span>{% endif %}
+        <button class="icon-btn" type="button"
+                data-copy="{{ item.value | mask_secret if ioc_type == 'secret' else item.value }}"
+                aria-label="Copy indicator">⧉</button>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>

@@ -1,0 +1,32 @@
+<div class="card">
+  <div class="card-head">
+    <h2>VirusTotal</h2>
+    {% if vt_result.found %}
+    <span class="badge {{ 'badge-bad' if vt_result.malicious else ('badge-warn' if vt_result.suspicious else 'badge-ok') }}">
+      <span class="dot"></span>{{ vt_result.malicious }} malicious · {{ vt_result.suspicious }} suspicious
+    </span>
+    {% else %}
+    <span class="badge badge-muted"><span class="dot"></span>no record</span>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    {% if vt_result.found %}
+    <dl class="kv">
+      <dt>Detections</dt>
+      <dd class="mono">{{ vt_result.malicious }} malicious / {{ vt_result.malicious + vt_result.suspicious + vt_result.undetected + vt_result.harmless }} engines</dd>
+      <dt>Reputation</dt><dd class="mono">{{ vt_result.reputation if vt_result.reputation is not none else '—' }}</dd>
+      {% if vt_result.type_description %}<dt>Type</dt><dd>{{ vt_result.type_description }}</dd>{% endif %}
+      {% if vt_result.names %}<dt>Names</dt><dd class="mono small">{{ vt_result.names | join(', ') }}</dd>{% endif %}
+      {% if vt_result.tags %}<dt>Tags</dt><dd>{{ vt_result.tags | join(', ') }}</dd>{% endif %}
+      {% if vt_result.categories %}<dt>Categories</dt><dd>{{ vt_result.categories.values() | join(', ') }}</dd>{% endif %}
+      {% if vt_result.last_analysis %}<dt>Last analysis</dt><dd class="mono small">{{ vt_result.last_analysis }}</dd>{% endif %}
+    </dl>
+    <p class="muted small">
+      Lookup by hash/URL only — the file itself was not uploaded.
+      <a class="link" href="{{ vt_result.permalink }}" target="_blank" rel="noopener noreferrer nofollow">Open on VirusTotal ↗</a> (clearnet)
+    </p>
+    {% else %}
+    <p class="muted">No VirusTotal record for this indicator.</p>
+    {% endif %}
+  </div>
+</div>

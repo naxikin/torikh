@@ -1,0 +1,39 @@
+<div class="card" id="engines-panel">
+  <div class="card-head">
+    <h2>Search engines</h2>
+    <div class="card-head-actions">
+      {% if report %}
+      <span class="muted small">last check {{ report.checked_at | ts }}{% if fresh %} · just now{% endif %}</span>
+      {% endif %}
+      <button class="btn btn-ghost btn-sm" type="button" data-action="check-engines" data-target="#engines-panel" data-busy="Checking engines…">
+        {% if report %}Check now{% else %}Run first check{% endif %}
+      </button>
+    </div>
+  </div>
+  <div class="card-body card-body-flush">
+    {% if report %}
+    <table class="table table-compact">
+      <thead><tr><th>Engine</th><th>Status</th><th>Latency</th><th>Results</th><th>Reliability</th></tr></thead>
+      <tbody>
+        {% for row in report.results %}
+        <tr>
+          <td class="strong">{{ row.name }}</td>
+          <td><span class="badge {{ 'badge-ok' if row.status == 'up' else 'badge-bad' }}"><span class="dot"></span>{{ row.status }}</span></td>
+          <td class="mono">{{ (row.latency_ms ~ ' ms') if row.latency_ms else '—' }}
+            {% if row.latency_ms %}<span class="lat-bar"><span class="lat-fill" data-pct="{{ ([row.latency_ms / 100, 100] | min) | round(0) }}"></span></span>{% endif %}
+          </td>
+          <td class="mono">{{ row.count }}</td>
+          <td class="mono">{{ '%.2f' | format(row.reliability) if row.reliability is not none else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="card-foot muted small">{{ report.alive }}/{{ report.total }} engines alive · test query “{{ report.test_query }}”</div>
+    {% else %}
+    <div class="empty">
+      <p class="strong">No engine check yet</p>
+      <p class="muted">Run a health check to measure latency and reliability across the 10 indexes.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>

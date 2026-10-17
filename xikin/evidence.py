@@ -72,6 +72,12 @@ class EvidenceLog:
             "error": error,
         }
 
+    def entries(self, limit: int = 50) -> list:
+        """Most recent chained records, newest first (for the web UI)."""
+        entries, _ = self._read_entries()
+        records = [record for _, record in entries][-limit:]
+        return list(reversed(records))
+
     def append(self, record: Dict[str, object]) -> Optional[str]:
         """Append one chained record. Returns the entry hash, or None on failure."""
         try:

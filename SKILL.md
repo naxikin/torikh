@@ -30,6 +30,13 @@ directory with `python3`.
 | Verify evidence chain | `python3 evidence.py --verify` |
 | Analyse content with LLM | `python3 ask.py --query "..." --mode ransomware --file page.txt` |
 | Full investigation | `python3 pipeline.py --query "..." --mode corporate --out report.md` |
+| Web platform | `python3 -m xikin.web` (needs `XIKIN_WEB_TOKEN` beyond localhost) |
+| Web Tools | open `/tools` — fetch URL, static file analysis, index search |
+| Monitoring | open `/watch` — saved queries, scheduled runs, signed webhook alerts |
+| Users / RBAC | `/users` (admin) — roles: admin, analyst, viewer |
+| Saved filters | `/runs` — save the current query/mode/status filter |
+| Dashboard PDF | `/dashboard.pdf` |
+| VirusTotal lookup (optional) | set `VT_API_KEY`, then use the Tools checkboxes |
 
 JSON output: add `--json` to any command. Engine subset: `--engines Ahmia Tor66`.
 

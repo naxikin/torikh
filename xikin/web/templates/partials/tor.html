@@ -1,0 +1,25 @@
+<div class="card" id="tor-panel">
+  <div class="card-head">
+    <h2>Tor</h2>
+    <span class="badge {{ 'badge-ok' if tor.tor_active else 'badge-bad' }}"><span class="dot"></span>{{ 'active' if tor.tor_active else 'inactive' }}</span>
+  </div>
+  <div class="card-body">
+    <dl class="kv">
+      <dt>Exit IP</dt><dd class="mono">{{ tor.exit_ip or '—' }}</dd>
+      <dt>Confirmed Tor node</dt><dd>{{ 'yes' if tor.is_tor else 'no' }}</dd>
+      <dt>Error</dt><dd class="muted">{{ tor.error or '—' }}</dd>
+    </dl>
+    {% if renew %}
+      <div class="notice {{ 'notice-ok' if renew.success else 'notice-bad' }}">
+        {% if renew.success %}
+          New circuit established → <span class="mono">{{ renew.new_ip or 'exit node rotated' }}</span>
+        {% else %}
+          Rotation failed: {{ renew.error }}
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+  <div class="card-foot">
+    <button class="btn btn-ghost" type="button" data-action="renew-tor" data-target="#tor-panel" data-busy="Rotating…">Rotate circuit</button>
+  </div>
+</div>

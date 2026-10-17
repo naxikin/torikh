@@ -80,6 +80,15 @@ class Settings:
     isolate_circuits: bool = True
     evidence_enabled: bool = True
     evidence_path: str = ""
+    web_host: str = "127.0.0.1"
+    web_port: int = 8080
+    web_token: Optional[str] = None
+    web_runs_dir: str = ""
+    web_watch_db: str = ""
+    web_state_db: str = ""
+    webhook_url: Optional[str] = None
+    webhook_secret: Optional[str] = None
+    session_secret: Optional[str] = None
 
     # LLM
     llm_provider: str = "openai"
@@ -96,6 +105,9 @@ class Settings:
     ollama_model: str = "llama3.2"
     llamacpp_base_url: str = "http://127.0.0.1:8080"
     llamacpp_model: str = "local-model"
+
+    # VirusTotal enrichment (optional, clearnet lookup by hash/URL only)
+    vt_api_key: Optional[str] = None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -120,6 +132,18 @@ class Settings:
             evidence_enabled=_str("XIKIN_EVIDENCE", "1") not in ("0", "false", "off", "no"),
             evidence_path=_str("XIKIN_EVIDENCE_LOG",
                                str(Path.home() / ".xikin" / "evidence.jsonl")),
+            web_host=_str("XIKIN_WEB_HOST", "127.0.0.1"),
+            web_port=_int("XIKIN_WEB_PORT", 8080),
+            web_token=_str("XIKIN_WEB_TOKEN"),
+            web_runs_dir=_str("XIKIN_WEB_RUNS",
+                              str(Path.home() / ".xikin" / "web" / "runs")),
+            web_watch_db=_str("XIKIN_WATCH_DB",
+                              str(Path.home() / ".xikin" / "web" / "watch.db")),
+            web_state_db=_str("XIKIN_STATE_DB",
+                              str(Path.home() / ".xikin" / "web" / "state.db")),
+            webhook_url=_str("XIKIN_WEBHOOK_URL"),
+            webhook_secret=_str("XIKIN_WEBHOOK_SECRET"),
+            session_secret=_str("XIKIN_SESSION_SECRET"),
             llm_provider=(_str("LLM_PROVIDER", "openai") or "openai").lower(),
             llm_timeout=_int("XIKIN_LLM_TIMEOUT", 120),
             llm_max_chars=_int("XIKIN_LLM_MAX_CHARS", 24000),
@@ -134,6 +158,7 @@ class Settings:
             ollama_model=_str("OLLAMA_MODEL", "llama3.2"),
             llamacpp_base_url=_str("LLAMACPP_BASE_URL", "http://127.0.0.1:8080"),
             llamacpp_model=_str("LLAMACPP_MODEL", "local-model"),
+            vt_api_key=_str("VT_API_KEY") or _str("XIKIN_VT_API_KEY"),
         )
 
 

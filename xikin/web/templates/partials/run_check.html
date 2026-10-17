@@ -1,0 +1,87 @@
+<div class="card" id="run-check-panel">
+  <div class="card-head">
+    <h2>Check · {{ run.query }}</h2>
+    <span class="badge {{ 'badge-ok' if run.status == 'done' else ('badge-bad' if run.status == 'error' else 'badge-warn') }}">
+      <span class="dot"></span>{{ run.status }}
+    </span>
+  </div>
+  <div class="card-body">
+    <dl class="kv">
+      <dt>Run</dt>
+      <dd class="mono">{{ run.id[:8] }} · {{ run.created | ts }}</dd>
+      <dt>Artifacts</dt>
+      <dd class="mono small">
+        meta ✓
+        · result {{ '✓' if result else '—' }}
+        · report {{ ('✓ ' ~ report.bytes ~ ' B') if report.exists else '—' }}
+        · events {{ event_count }}
+      </dd>
+      <dt>Report SHA-256</dt>
+      <dd class="mono small trunc" title="{{ report.sha256 or '' }}">{{ report.sha256 or '—' }}</dd>
+      <dt>Evidence chain</dt>
+      <dd>
+        <span class="badge {{ 'badge-ok' if evidence.ok else 'badge-bad' }}"><span class="dot"></span>{{ 'verified' if evidence.ok else 'broken' }}</span>
+        <span class="muted small">{{ evidence.entries }} record{{ '' if evidence.entries == 1 else 's' }}</span>
+      </dd>
+      <dt>Results / indicators</dt>
+      <dd class="mono">{{ result.get('results', []) | length }} / {{ result.get('indicator_count', 0) }}</dd>
+      {% if run.error %}
+      <dt>Error</dt>
+      <dd class="mono small text-bad">{{ run.error }}</dd>
+      {% endif %}
+    </dl>
+
+    {% if top_iocs %}
+    <h3 class="ioc-title">Top indicators</h3>
+    <ul class="ioc-list ioc-list-flat">
+      {% for item in top_iocs %}
+      <li>
+        <span class="muted small">{{ item.label }}</span>
+        <code class="mono small">{{ item.value }}</code>
+        <button class="icon-btn" type="button" data-copy="{{ item.value }}" aria-label="Copy indicator">⧉</button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if live %}
+    <h3 class="ioc-title">Live re-check</h3>
+    {% if live_rows %}
+    <div class="table-scroll">
+      <table class="table table-compact">
+        <thead><tr><th>Target</th><th>Status</th><th>Title / error</th></tr></thead>
+        <tbody>
+          {% for row in live_rows %}
+          <tr>
+            <td class="url-cell">
+              <span class="mono small trunc" title="{{ row.url }}">{{ row.url }}</span>
+              <button class="icon-btn" type="button" data-copy="{{ row.url }}" aria-label="Copy URL">⧉</button>
+            </td>
+            <td>
+              <span class="badge {{ 'badge-ok' if row.ok else 'badge-bad' }}"><span class="dot"></span>{{ row.status if row.status else 'ERR' }}</span>
+            </td>
+            <td>{{ row.title or row.error or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted small">No URLs available to re-check for this run.</p>
+    {% endif %}
+    {% endif %}
+  </div>
+  <div class="card-foot">
+    <div class="card-head-actions">
+      <a class="btn btn-ghost btn-sm" href="/runs/{{ run.id }}">Open investigation</a>
+      {% if report.exists %}
+      <a class="btn btn-ghost btn-sm" href="/runs/{{ run.id }}/report.md">Download report</a>
+      {% endif %}
+    </div>
+    <button class="btn btn-ghost btn-sm" type="button"
+            data-action="check-run-live" data-run="{{ run.id }}"
+            data-target="#run-check-panel" data-busy="Re-checking live…">
+      Live re-check
+    </button>
+  </div>
+</div>

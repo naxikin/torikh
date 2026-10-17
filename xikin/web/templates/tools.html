@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Tools{% endblock %}
+{% block page_title %}Tools{% endblock %}
+{% block page_sub %}Fetch a URL, analyse a file, or search an indicator across indexes.{% endblock %}
+
+{% block content %}
+{% if not can_write %}
+<div class="banner banner-warn">Your role is read-only. Ask an admin for analyst access to fetch URLs or analyse files.</div>
+{% endif %}
+<div class="grid grid-2">
+  <form class="card" method="post" action="/tools/fetch">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="card-head">
+      <h2>Fetch URL</h2>
+      <span class="badge badge-muted"><span class="dot"></span>via Tor</span>
+    </div>
+    <div class="card-body">
+      <label class="field">
+        <span class="field-label">URL</span>
+        <input class="input" type="text" name="url" value="{{ prefill_url }}"
+               placeholder="http://....onion/  or  https://example.com/" required>
+        <span class="field-hint">Fetched through Tor. The body is never rendered as HTML.</span>
+      </label>
+      <div class="check-row">
+        <label class="check"><input type="checkbox" name="search_indexes" value="1"> Search dark-web indexes for this URL</label>
+        <label class="check"><input type="checkbox" name="enrich_vt" value="1" {% if not vt_enabled %}disabled{% endif %}>
+          VirusTotal lookup {% if not vt_enabled %}<span class="muted small">(no VT_API_KEY)</span>{% endif %}
+        </label>
+      </div>
+      <p class="muted small">VirusTotal enrichment sends only the URL over clearnet (not through Tor).</p>
+    </div>
+    <div class="card-foot">
+      <span class="muted small">Title, text, links, IOCs and SHA-256.</span>
+      <button class="btn btn-primary" type="submit" {% if not can_write %}disabled{% endif %}>Fetch</button>
+    </div>
+  </form>
+
+  <form class="card" method="post" action="/tools/file" enctype="multipart/form-data">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="card-head">
+      <h2>Analyse file</h2>
+      <span class="badge badge-muted"><span class="dot"></span>25 MB max</span>
+    </div>
+    <div class="card-body">
+      <label class="field">
+        <span class="field-label">File</span>
+        <input class="input" type="file" name="file" required>
+        <span class="field-hint">Static analysis only: hashes, type, entropy, strings and IOCs. The file is never executed, uploaded or stored.</span>
+      </label>
+      <div class="check-row">
+        <label class="check"><input type="checkbox" name="search_indexes" value="1"> Search indexes for the SHA-256</label>
+        <label class="check"><input type="checkbox" name="enrich_vt" value="1" {% if not vt_enabled %}disabled{% endif %}>
+          VirusTotal lookup {% if not vt_enabled %}<span class="muted small">(no VT_API_KEY)</span>{% endif %}
+        </label>
+      </div>
+      <p class="muted small">A hash record is appended to the evidence chain; content never leaves the machine.</p>
+    </div>
+    <div class="card-foot">
+      <span class="muted small">Nothing is executed or written to disk.</span>
+      <button class="btn btn-primary" type="submit" {% if not can_write %}disabled{% endif %}>Analyse</button>
+    </div>
+  </form>
+</div>
+
+{% if errors %}
+<div class="card">
+  <div class="card-head"><h2>Notes</h2></div>
+  <div class="card-body">
+    <ul class="error-list">{% for error in errors %}<li class="mono small">{{ error }}</li>{% endfor %}</ul>
+  </div>
+</div>
+{% endif %}
+
+{% if result %}{% include "partials/tool_result.html" %}{% endif %}
+{% if index_report %}{% include "partials/index_results.html" %}{% endif %}
+{% if vt_result %}{% include "partials/vt.html" %}{% endif %}
+{% endblock %}

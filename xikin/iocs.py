@@ -139,21 +139,23 @@ def mask_secret(value: str) -> str:
     return "%s…%s [REDACTED]" % (value[:4], value[-4:])
 
 
+IOC_LABELS = {
+    "onion_url": "Onion URLs", "onion_host": "Onion hosts", "url": "Clearnet URLs",
+    "ipv4": "IPv4 addresses", "email": "Email addresses", "secret": "Secrets / credentials",
+    "sha256": "SHA-256", "sha1": "SHA-1", "md5": "MD5", "cve": "CVEs",
+    "pgp_fingerprint": "PGP fingerprints", "btc": "Bitcoin addresses",
+    "xmr": "Monero addresses", "eth": "Ethereum addresses",
+}
+
+
 def render_markdown(iocs: Dict[str, List[dict]], redact: bool = True,
                     limit_per_type: int = 25) -> str:
     lines = ["### Extracted indicators", ""]
     if not iocs:
         return "\n".join(lines + ["_No indicators extracted._", ""])
 
-    labels = {
-        "onion_url": "Onion URLs", "onion_host": "Onion hosts", "url": "Clearnet URLs",
-        "ipv4": "IPv4 addresses", "email": "Email addresses", "secret": "Secrets / credentials",
-        "sha256": "SHA-256", "sha1": "SHA-1", "md5": "MD5", "cve": "CVEs",
-        "pgp_fingerprint": "PGP fingerprints", "btc": "Bitcoin addresses",
-        "xmr": "Monero addresses", "eth": "Ethereum addresses",
-    }
     for ioc_type, items in iocs.items():
-        label = labels.get(ioc_type, ioc_type)
+        label = IOC_LABELS.get(ioc_type, ioc_type)
         shown = items[:limit_per_type]
         lines.append("**%s** (%d)" % (label, len(items)))
         lines.append("")

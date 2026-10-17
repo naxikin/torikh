@@ -5,7 +5,7 @@ import warnings
 
 warnings.filterwarnings("ignore", message=".*urllib3 v2 only supports OpenSSL.*")
 
-__version__ = "0.1.0"
+__version__ = "0.5.0"
 
 from .config import settings  # noqa: F401
 from .doctor import run_all as doctor  # noqa: F401

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Investigations{% endblock %}
+{% block page_title %}Investigations{% endblock %}
+{% block page_sub %}Every run keeps its metadata, report, indicators and evidence hashes.{% endblock %}
+{% block actions %}
+  {% if can_write %}<a class="btn btn-primary" href="/new">New investigation</a>{% endif %}
+{% endblock %}
+
+{% block content %}
+{% if deleted %}
+<div class="banner banner-ok">Investigation <span class="mono">{{ deleted }}</span> deleted. Evidence-log records are retained (append-only).</div>
+{% endif %}
+{% if deleted_bulk is not none %}
+<div class="banner banner-ok">{{ deleted_bulk }} investigation(s) deleted{% if skipped %} · {{ skipped }} skipped{% endif %}. Evidence-log records are retained.</div>
+{% endif %}
+{% if filter_saved %}
+<div class="banner banner-ok">Filter saved.</div>
+{% elif filter_error %}
+<div class="banner banner-bad">Filter name is required.</div>
+{% endif %}
+{% if error == 'running' %}
+<div class="banner banner-bad">Cannot delete a running investigation. Wait for it to finish.</div>
+{% elif error == 'delete_failed' %}
+<div class="banner banner-bad">Could not delete the run directory — check permissions.</div>
+{% endif %}
+
+<div class="card filter-card">
+  <div class="card-body">
+    <form class="filter-bar" method="get" action="/runs">
+      <input class="input" type="text" name="q" value="{{ q }}"
+             placeholder="Filter by query…">
+      <select class="input" name="mode">
+        <option value="">All modes</option>
+        {% for key, config in modes.items() %}
+        <option value="{{ key }}" {% if key == mode %}selected{% endif %}>{{ config.label }}</option>
+        {% endfor %}
+      </select>
+      <select class="input" name="status">
+        <option value="">All statuses</option>
+        {% for state in ("done", "running", "queued", "error") %}
+        <option value="{{ state }}" {% if state == status %}selected{% endif %}>{{ state }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-ghost" type="submit">Apply</button>
+      <a class="link small" href="/runs">Clear</a>
+    </form>
+    <div class="filter-saved">
+      <span class="muted small">Saved:</span>
+      {% for saved in filters %}
+      <span class="chip">
+        <a href="/runs?q={{ saved.query | urlencode }}&mode={{ saved.mode | urlencode }}&status={{ saved.status | urlencode }}">{{ saved.name }}</a>
+        <form method="post" action="/filters/{{ saved.id }}/delete"
+              data-confirm="Delete saved filter “{{ saved.name }}”?">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button class="chip-x" type="submit" aria-label="Delete saved filter">×</button>
+        </form>
+      </span>
+      {% endfor %}
+      <form class="save-filter" method="post" action="/filters/create">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="q" value="{{ q }}">
+        <input type="hidden" name="mode" value="{{ mode }}">
+        <input type="hidden" name="status" value="{{ status }}">
+        <input class="input input-xs" type="text" name="name" maxlength="80"
+               placeholder="Save current filter" required>
+        <button class="btn btn-sm btn-ghost" type="submit">Save</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  {% if runs and is_admin %}
+  <div class="bulk-bar">
+    <form id="bulk-form" method="post" action="/runs/bulk-delete"
+          data-confirm="Delete selected investigations? Report and artifacts are removed. Evidence log records remain.">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label class="check"><input type="checkbox" data-select-all="input[name='ids']"> Select all</label>
+      <button class="btn btn-sm btn-danger" type="submit">Delete selected</button>
+    </form>
+  </div>
+  {% endif %}
+  <div class="card-body card-body-flush">
+    {% if runs %}
+    <table class="table">
+      <thead>
+        <tr>
+          {% if is_admin %}<th class="select-cell"></th>{% endif %}
+          <th>Run</th><th>Query</th><th>Mode</th><th>Status</th><th>Results</th><th>Indicators</th><th>Created</th><th class="actions-cell">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+        <tr>
+          {% if is_admin %}<td class="select-cell"><input type="checkbox" name="ids" value="{{ run.id }}" form="bulk-form" aria-label="Select run"></td>{% endif %}
+          <td class="mono small"><a class="link" href="/runs/{{ run.id }}">{{ run.id[:8] }}</a></td>
+          <td><a class="link strong" href="/runs/{{ run.id }}">{{ run.query }}</a></td>
+          <td class="muted">{{ run.mode }}</td>
+          <td>
+            <span class="badge {{ 'badge-ok' if run.status == 'done' else ('badge-bad' if run.status == 'error' else 'badge-warn') }}">
+              <span class="dot"></span>{{ run.status }}
+            </span>
+          </td>
+          <td class="mono">{{ run.results_count or 0 }}</td>
+          <td class="mono">{{ run.indicator_count or 0 }}</td>
+          <td class="mono small">{{ run.created | ts }}</td>
+          <td class="actions-cell">
+            <button class="btn btn-ghost btn-sm" type="button"
+                    data-action="check-run" data-run="{{ run.id }}"
+                    data-target="#run-check-panel" data-busy="Checking…">Check</button>
+            {% if is_admin %}
+            <form method="post" action="/runs/{{ run.id }}/delete"
+                  data-confirm="Delete investigation {{ run.id[:8] }}? Report and artifacts will be removed. Evidence log records remain.">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <button class="btn btn-sm btn-danger" type="submit">Delete</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">
+      <p class="strong">{{ 'No matching investigations' if (q or mode or status) else 'No investigations yet' }}</p>
+      <p class="muted">{{ 'Try clearing the filters.' if (q or mode or status) else 'Start with a short keyword query — 3 to 5 words work best.' }}</p>
+      {% if can_write %}<a class="btn btn-primary" href="/new">New investigation</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div id="run-check-panel" class="check-panel"></div>
+{% endblock %}

@@ -1,0 +1,38 @@
+<div class="card" id="urlcheck-panel">
+  <div class="card-head">
+    <h2>URL result</h2>
+    {% if result %}
+    <span class="badge {{ 'badge-ok' if result.ok else 'badge-bad' }}">
+      <span class="dot"></span>{{ ('HTTP ' ~ result.status) if result.status else 'unreachable' }}
+    </span>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    {% if error %}
+    <div class="notice notice-bad">{{ error }}</div>
+    {% endif %}
+    {% if result %}
+    <dl class="kv">
+      <dt>URL</dt>
+      <dd>
+        <span class="mono small trunc" title="{{ result.url or url }}">{{ result.url or url }}</span>
+        <button class="icon-btn" type="button" data-copy="{{ result.url or url }}" aria-label="Copy URL">⧉</button>
+      </dd>
+      <dt>Title</dt><dd>{{ result.title or '—' }}</dd>
+      <dt>SHA-256</dt><dd class="mono small trunc">{{ result.sha256 or '—' }}</dd>
+      <dt>Size</dt><dd class="mono">{{ result.bytes or 0 }} bytes</dd>
+      <dt>Links</dt><dd class="mono">{{ result.links | length }}</dd>
+      <dt>Indicators</dt><dd class="mono">{{ ioc_total or 0 }}</dd>
+      {% if result.error %}
+      <dt>Error</dt><dd class="text-bad small">{{ result.error }}</dd>
+      {% endif %}
+    </dl>
+    <div class="form-actions">
+      <span class="muted small">Fetched through Tor; body not rendered as HTML.</span>
+      <a class="btn btn-ghost btn-sm" href="/tools?url={{ url | urlencode }}">Full analysis in Tools</a>
+    </div>
+    {% elif not error %}
+    <p class="muted small">Enter a URL above to check it through Tor.</p>
+    {% endif %}
+  </div>
+</div>

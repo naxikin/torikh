@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf" content="{{ csrf }}">
+  <meta name="referrer" content="no-referrer">
+  <title>{% block title %}Xikin{% endblock %} · Xikin</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+</head>
+<body class="app">
+  <aside class="sidebar">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true"><span class="brand-ring"></span></span>
+      <span class="brand-name">XIKIN<small>dark-web OSINT</small></span>
+    </a>
+    <nav class="nav" aria-label="Main navigation">
+      <a href="/" class="nav-link {% if active == 'dashboard' %}is-active{% endif %}"><span class="nav-ico">◧</span>Dashboard</a>
+      {% if can_write %}<a href="/new" class="nav-link {% if active == 'new' %}is-active{% endif %}"><span class="nav-ico">＋</span>New investigation</a>{% endif %}
+      <a href="/runs" class="nav-link {% if active == 'runs' %}is-active{% endif %}"><span class="nav-ico">≡</span>Investigations</a>
+      <a href="/watch" class="nav-link {% if active == 'watch' %}is-active{% endif %}"><span class="nav-ico">◷</span>Monitoring</a>
+      <a href="/tools" class="nav-link {% if active == 'tools' %}is-active{% endif %}"><span class="nav-ico">⌕</span>Tools</a>
+      <a href="/evidence" class="nav-link {% if active == 'evidence' %}is-active{% endif %}"><span class="nav-ico">⛓</span>Evidence</a>
+      <a href="/settings" class="nav-link {% if active == 'settings' %}is-active{% endif %}"><span class="nav-ico">⚙</span>Settings</a>
+      {% if is_admin %}<a href="/users" class="nav-link {% if active == 'users' %}is-active{% endif %}"><span class="nav-ico">☰</span>Users</a>{% endif %}
+    </nav>
+    <div class="sidebar-foot">
+      <span class="pill pill-muted">v{{ version }}</span>
+      {% if user %}<span class="muted small mono">{{ user }} · {{ role }}</span>{% endif %}
+      {% if auth_enabled %}
+      <div class="sidebar-actions">
+        <a class="link small" href="/account">Account</a>
+        <form method="post" action="/logout">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button class="link small link-btn" type="submit">Sign out</button>
+        </form>
+      </div>
+      {% endif %}
+      <span class="muted small">lawful OSINT only</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-title">
+        <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
+        <p class="page-sub">{% block page_sub %}{% endblock %}</p>
+      </div>
+      <div class="topbar-actions">{% block actions %}{% endblock %}</div>
+    </header>
+
+    {% if not auth_enabled %}
+    <div class="banner banner-warn">
+      Authentication is disabled (loopback only). Set <code>XIKIN_WEB_TOKEN</code>
+      or create a user account before exposing this UI beyond localhost.
+    </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+
+    <footer class="foot">
+      <span>{{ safety_note }}</span>
+      <span class="foot-sep">·</span>
+      <span>For lawful OSINT, threat intelligence and security research only.</span>
+    </footer>
+  </main>
+
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
